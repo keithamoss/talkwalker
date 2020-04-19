@@ -4,9 +4,10 @@ import Typography from '@material-ui/core/Typography'
 import ErrorTwoToneIcon from '@material-ui/icons/ErrorTwoTone'
 import SearchIcon from '@material-ui/icons/Search'
 import React, { Fragment } from 'react'
+import Highlighter from 'react-highlight-words'
 import { useDebounce } from 'use-debounce'
 import { isDev } from '../shared/utils'
-import { findMatchingWords, readWordsFile } from '../shared/words'
+import { findMatchingWords, readWordsFile, stripTalkWalkerOperators } from '../shared/words'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -41,6 +42,8 @@ export const Home: React.FC = () => {
     isDev() ? '' : ''
   )
   const [searchTerm] = useDebounce(searchTermRaw, 500)
+  const searchTermForHighlighter = stripTalkWalkerOperators(searchTerm)
+
   const [isWordsListLoaded, setIsWordsListLoaded] = React.useState<boolean>(
     false
   )
@@ -161,7 +164,14 @@ export const Home: React.FC = () => {
                       matchingWordsList.map((word: string) => {
                         return (
                           <ListItem key={word}>
-                            <ListItemText primary={word} />
+                            <ListItemText>
+                              <Highlighter
+                                highlightClassName="wordHighlighter"
+                                searchWords={[searchTermForHighlighter]}
+                                autoEscape
+                                textToHighlight={word}
+                              />
+                            </ListItemText>
                           </ListItem>
                         )
                       })}

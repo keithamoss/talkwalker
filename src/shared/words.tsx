@@ -47,3 +47,6 @@ export const findMatchingWords = async (term: string): Promise<string[]> => {
     }
   })
 }
+
+export const stripTalkWalkerOperators = (string: string) =>
+  string.replace(/[*?]/g, '')
