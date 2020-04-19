@@ -102,14 +102,6 @@ export const Home: React.FC = () => {
                 className={classes.form}
                 onSubmit={(e) => {
                   e.preventDefault()
-
-                  // const form = e.target as HTMLFormElement
-                  // const input: HTMLInputElement | null = form.elements.namedItem(
-                  //   'search'
-                  // ) as HTMLInputElement
-                  // if (input !== null && input.value.length > 0) {
-                  //   setSearchTerm(input.value)
-                  // }
                 }}
               >
                 <InputBase
