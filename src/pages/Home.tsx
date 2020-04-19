@@ -1,6 +1,7 @@
-import { Container, Grid, IconButton, InputAdornment, InputBase, LinearProgress, List, ListItem, ListItemText, Paper } from '@material-ui/core'
+import { Container, Grid, IconButton, InputAdornment, InputBase, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Paper } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import Typography from '@material-ui/core/Typography'
+import ErrorTwoToneIcon from '@material-ui/icons/ErrorTwoTone'
 import SearchIcon from '@material-ui/icons/Search'
 import Papa from 'papaparse'
 import React, { Fragment } from 'react'
@@ -76,12 +77,20 @@ export const Home: React.FC = () => {
   )
   const [searchTerm] = useDebounce(searchTermRaw, 500)
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [wordList, setWordList] = React.useState<string[]>([])
 
   React.useEffect(() => {
     ;(async () => {
       setIsLoading(true)
-      setWordList(await findMatchingWords(searchTerm))
+      setErrorMessage(null)
+
+      try {
+        setWordList(await findMatchingWords(searchTerm))
+      } catch (error) {
+        setErrorMessage(error.message)
+      }
+
       setIsLoading(false)
     })()
   }, [searchTerm])
@@ -138,8 +147,19 @@ export const Home: React.FC = () => {
               <Grid item className={classes.grid}>
                 {isLoading === true && <LinearProgress variant="query" />}
 
-                {isLoading === false && (
-                  <List component="nav" aria-label="word list">
+                {errorMessage !== null && (
+                  <List aria-label="error message">
+                    <ListItem>
+                      <ListItemIcon>
+                        <ErrorTwoToneIcon color="error" />
+                      </ListItemIcon>
+                      <ListItemText primary={errorMessage} />
+                    </ListItem>
+                  </List>
+                )}
+
+                {isLoading === false && errorMessage === null && (
+                  <List aria-label="word list">
                     {searchTerm.length >= 4 && wordList.length === 0 && (
                       <ListItem>
                         <ListItemText primary="No matching words found 😢" />
