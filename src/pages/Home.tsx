@@ -3,6 +3,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import Typography from '@material-ui/core/Typography'
 import ErrorTwoToneIcon from '@material-ui/icons/ErrorTwoTone'
 import SearchIcon from '@material-ui/icons/Search'
+import axios from 'axios'
 import Papa from 'papaparse'
 import React, { Fragment } from 'react'
 import { useDebounce } from 'use-debounce'
@@ -34,38 +35,51 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
+let wordsList: string | null = null
+const readWordsFile = (resolve: Function, reject: Function) => {
+  ;(async () => {
+    try {
+      const response = await axios.get(
+        `${window.location.protocol}//${window.location.host}/english-words/words.txt`
+      )
+      wordsList = response.data
+      resolve()
+    } catch (error) {
+      reject(error)
+    }
+  })()
+}
+
 const findMatchingWords = async (term: string): Promise<string[]> => {
   return new Promise((resolve, reject) => {
     if (typeof term !== 'string' || term.length < 4) {
       return resolve([])
     }
 
-    const regex = new RegExp(
-      `^${term.replace('*', '.{0,}').replace('?', '.{1}')}$`,
-      'i'
-    )
-    const wordList: string[] = []
+    if (typeof wordsList === 'string') {
+      const regex = new RegExp(
+        `^${term.replace('*', '.{0,}').replace('?', '.{1}')}$`,
+        'i'
+      )
+      const matchedWordsList: string[] = []
 
-    Papa.parse(
-      // The worker needs a fully qualified URL
-      `${window.location.protocol}//${window.location.host}/english-words/words.txt`,
-      {
-        download: true,
+      Papa.parse(wordsList, {
         worker: true,
+        fastMode: true,
         step: (results: any) => {
           const [word] = results.data
           if (regex.test(word) === true) {
-            wordList.push(word)
+            matchedWordsList.push(word)
           }
         },
         complete: () => {
-          resolve(wordList)
+          resolve(matchedWordsList)
         },
         error: (error: any) => {
           reject(error)
         },
-      }
-    )
+      })
+    }
   })
 }
 
@@ -76,24 +90,44 @@ export const Home: React.FC = () => {
     isDev() ? '' : ''
   )
   const [searchTerm] = useDebounce(searchTermRaw, 500)
+  const [isWordsListLoaded, setIsWordsListLoaded] = React.useState<boolean>(
+    false
+  )
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [wordList, setWordList] = React.useState<string[]>([])
 
   React.useEffect(() => {
     ;(async () => {
-      setIsLoading(true)
-      setErrorMessage(null)
+      if (searchTerm.length >= 4) {
+        setIsLoading(true)
+        setErrorMessage(null)
 
-      try {
-        setWordList(await findMatchingWords(searchTerm))
-      } catch (error) {
-        setErrorMessage(error.message)
+        try {
+          setWordList(await findMatchingWords(searchTerm))
+        } catch (error) {
+          setErrorMessage(error.message)
+        }
+
+        setIsLoading(false)
       }
-
-      setIsLoading(false)
     })()
   }, [searchTerm])
+
+  React.useEffect(() => {
+    setIsLoading(true)
+    ;(async () => {
+      readWordsFile(
+        () => {
+          setIsWordsListLoaded(true)
+          setIsLoading(false)
+        },
+        (error: Error) => {
+          setErrorMessage(error.message)
+        }
+      )
+    })()
+  }, [])
 
   return (
     <Fragment>
@@ -116,6 +150,7 @@ export const Home: React.FC = () => {
                 <InputBase
                   className={classes.input}
                   placeholder="Enter a TalkWalker word pattern (e.g. famil*)"
+                  disabled={isWordsListLoaded === false}
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
                     if (event.target.value.length >= 4) {
                       setSearchTerm(event.target.value)
