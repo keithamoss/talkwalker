@@ -5,6 +5,12 @@ import App from './App'
 import './index.css'
 import store from './store'
 
+declare global {
+  interface Window {
+    wordsList: string | null
+  }
+}
+
 ReactDOM.render(
   <Provider store={store}>
     <App />

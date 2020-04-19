@@ -3,11 +3,10 @@ import { makeStyles } from '@material-ui/core/styles'
 import Typography from '@material-ui/core/Typography'
 import ErrorTwoToneIcon from '@material-ui/icons/ErrorTwoTone'
 import SearchIcon from '@material-ui/icons/Search'
-import axios from 'axios'
-import Papa from 'papaparse'
 import React, { Fragment } from 'react'
 import { useDebounce } from 'use-debounce'
 import { isDev } from '../shared/utils'
+import { findMatchingWords, readWordsFile } from '../shared/words'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -35,54 +34,6 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-let wordsList: string | null = null
-const readWordsFile = (resolve: Function, reject: Function) => {
-  ;(async () => {
-    try {
-      const response = await axios.get(
-        `${window.location.protocol}//${window.location.host}/english-words/words.txt`
-      )
-      wordsList = response.data
-      resolve()
-    } catch (error) {
-      reject(error)
-    }
-  })()
-}
-
-const findMatchingWords = async (term: string): Promise<string[]> => {
-  return new Promise((resolve, reject) => {
-    if (typeof term !== 'string' || term.length < 4) {
-      return resolve([])
-    }
-
-    if (typeof wordsList === 'string') {
-      const regex = new RegExp(
-        `^${term.replace('*', '.{0,}').replace('?', '.{1}')}$`,
-        'i'
-      )
-      const matchedWordsList: string[] = []
-
-      Papa.parse(wordsList, {
-        worker: true,
-        fastMode: true,
-        step: (results: any) => {
-          const [word] = results.data
-          if (regex.test(word) === true) {
-            matchedWordsList.push(word)
-          }
-        },
-        complete: () => {
-          resolve(matchedWordsList)
-        },
-        error: (error: any) => {
-          reject(error)
-        },
-      })
-    }
-  })
-}
-
 export const Home: React.FC = () => {
   const classes = useStyles()
 
@@ -95,7 +46,9 @@ export const Home: React.FC = () => {
   )
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
-  const [wordList, setWordList] = React.useState<string[]>([])
+  const [matchingWordsList, setMatchingWordsList] = React.useState<
+    string[] | null
+  >(null)
 
   React.useEffect(() => {
     ;(async () => {
@@ -104,7 +57,7 @@ export const Home: React.FC = () => {
         setErrorMessage(null)
 
         try {
-          setWordList(await findMatchingWords(searchTerm))
+          setMatchingWordsList(await findMatchingWords(searchTerm))
         } catch (error) {
           setErrorMessage(error.message)
         }
@@ -195,14 +148,17 @@ export const Home: React.FC = () => {
 
                 {isLoading === false && errorMessage === null && (
                   <List aria-label="word list">
-                    {searchTerm.length >= 4 && wordList.length === 0 && (
-                      <ListItem>
-                        <ListItemText primary="No matching words found 😢" />
-                      </ListItem>
-                    )}
+                    {searchTerm.length >= 4 &&
+                      matchingWordsList !== null &&
+                      matchingWordsList.length === 0 && (
+                        <ListItem>
+                          <ListItemText primary="No matching words found 😢" />
+                        </ListItem>
+                      )}
 
-                    {wordList.length > 0 &&
-                      wordList.map((word: string) => {
+                    {matchingWordsList !== null &&
+                      matchingWordsList.length > 0 &&
+                      matchingWordsList.map((word: string) => {
                         return (
                           <ListItem key={word}>
                             <ListItemText primary={word} />
